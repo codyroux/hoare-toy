@@ -226,7 +226,25 @@ Section Lang.
     - reflexivity.
   Qed.
 
+  Inductive invariant (P : pred) (e : expr) (i : insn) : env -> Prop :=
+  | unfold : forall f g,
+      big_step f i g ->
+      eval_expr f e <> 0 ->
+      invariant P e i f ->
+      invariant P e i g
+  | init : forall f, P f -> invariant P e i f.
 
+  Lemma while_complete : forall i body e (P Q : pred) g,
+      (forall f g, P f -> big_step f i g -> Q g) ->
+      (i = While e Do body Done) ->
+      eval_expr g e = 0 ->
+      invariant P e i g ->
+      Q g.
+  Proof.
+    intros.
+    induction H2.
+    - 
+  
   Theorem hoare_complete : forall i (P Q : pred),
       (forall f g, P f -> big_step f i g -> Q g) -> hoare P i Q.
   Proof.
@@ -245,6 +263,7 @@ Section Lang.
         eapply prop; destruct H; eauto.
       + apply IHi2; intros.
         eapply prop; destruct H; eauto.
-    - eapply H_While.
-      + eapply IHi.
-        
+    - eapply H_While with (I := invariant P e i); intros.
+      + apply IHi.
+        intros f g [neq H] bs; eapply unfold; eauto.
+      + 
