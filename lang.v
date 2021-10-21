@@ -226,24 +226,34 @@ Section Lang.
     - reflexivity.
   Qed.
 
-  Inductive invariant (P : pred) (e : expr) (i : insn) : env -> Prop :=
-  | unfold : forall f g,
-      big_step f i g ->
-      eval_expr f e <> 0 ->
-      invariant P e i f ->
-      invariant P e i g
-  | init : forall f, P f -> invariant P e i f.
+  (* This should be the strongest postcondition for [While e Do body
+  Done], given P as a precondition. *)
 
-  Lemma while_complete : forall i body e (P Q : pred) g,
-      (forall f g, P f -> big_step f i g -> Q g) ->
-      (i = While e Do body Done) ->
-      eval_expr g e = 0 ->
-      invariant P e i g ->
-      Q g.
+  Inductive invariant : forall (P : pred) (e : expr) (i : insn) (f : env), Prop :=
+  | inv_0 : forall (P : pred) e i f, P f -> invariant P e i f
+  | inv_s : forall (P : pred) e i f g,
+      eval_expr f e <> 0 ->
+      big_step f i g ->
+      invariant P e i f ->
+      invariant P e i g.
+
+  Hint Constructors invariant.
+  
+  Lemma while_SP_1 : forall body e (P : pred) f,
+      P f -> invariant P e body f.
   Proof.
-    intros.
-    induction H2.
-    - 
+    intros; econstructor; now eauto.
+  Qed.
+        
+  Lemma while_SP_2 : forall body e (P Q : pred),
+      (forall f g, P f -> big_step f (While e Do body Done) g -> Q g) ->
+      forall g, invariant P e body g -> eval_expr g e = 0 -> Q g.
+  Proof.
+    intros until g; intro inv; induction inv; intros.
+    - eapply H; eauto.
+    -
+  Qed.
+  
   
   Theorem hoare_complete : forall i (P Q : pred),
       (forall f g, P f -> big_step f i g -> Q g) -> hoare P i Q.
@@ -265,5 +275,7 @@ Section Lang.
         eapply prop; destruct H; eauto.
     - eapply H_While with (I := invariant P e i); intros.
       + apply IHi.
-        intros f g [neq H] bs; eapply unfold; eauto.
-      + 
+        intros f g [neq H] bs. now eauto.
+      + eapply while_SP_2; now eauto.
+      + eapply while_SP_1; now eauto.
+  Qed.
