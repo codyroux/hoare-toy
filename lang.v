@@ -244,14 +244,23 @@ Section Lang.
   Proof.
     intros; econstructor; now eauto.
   Qed.
-        
+
+  Lemma while_SP_2_gen : forall body e (P Q : pred),
+      (forall f g, P f -> big_step f (While e Do body Done) g -> Q g) ->
+      forall g h, invariant P e body g -> big_step g (While e Do body Done) h -> Q h.
+  Proof.
+    intros until h; intros inv; induction inv.
+    - intros; eapply H; now eauto.
+    - intros; apply IHinv; auto.
+      econstructor; now eauto.
+  Qed.
+  
+
   Lemma while_SP_2 : forall body e (P Q : pred),
       (forall f g, P f -> big_step f (While e Do body Done) g -> Q g) ->
       forall g, invariant P e body g -> eval_expr g e = 0 -> Q g.
   Proof.
-    intros until g; intro inv; induction inv; intros.
-    - eapply H; eauto.
-    -
+    intros; eapply while_SP_2_gen; now eauto.
   Qed.
   
   
