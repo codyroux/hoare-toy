@@ -87,9 +87,50 @@ Fixpoint pp_expr (e : expr) : string :=
   | Var v => v
   | Const c => Z_to_string c
   | Binop b e1 e2 =>
-    "(" ++ pp_expr e1 ++ ")" ++ binop_to_string b ++ "(" ++ pp_expr e2 ++ ")"
+    "(" ++ pp_expr e1 ++ binop_to_string b ++ pp_expr e2 ++ ")"
   end.
+
+Eval compute in pp_expr (3 + "x" - 2).
 
 Print Module String.
 
-Fixpoint pp_newline (s : string) : string := _
+Require Import Ascii.
+
+Print string.
+
+Definition newline := String "010"%char EmptyString.
+
+Definition pp_newline (s : string) : string :=
+  s ++ newline.
+
+Eval compute in pp_newline "foobar".
+
+
+Fixpoint pp_insn_aux (i : insn) : string :=
+  match i with
+  | Skip => ""
+  | x :== e => x ++ " = " ++ pp_expr e
+  | (i1; i2) =>
+    let s1 := pp_insn_aux i1 ++ ";" in
+    let s2 := pp_insn_aux i2 in
+    (pp_newline s1) ++ s2
+  | If e Then i1 Else i2 =>
+    let s_cond := pp_expr e in
+    let s1 := pp_insn_aux i1 ++ ";" in
+    let s2 := pp_insn_aux i2 ++ ";" in
+    (pp_newline ("if (" ++ s_cond ++ ")"))
+      ++
+      (pp_newline ("{ " ++ s1 ++ " }"))
+      ++
+      ("else { " ++ s2 ++ "}")
+  | While e Do body Done =>
+    let s_cond := pp_expr e in
+    let s_body := pp_insn_aux body ++ ";" in
+    (pp_newline ("while (" ++ s_cond ++ ")"))
+      ++
+      ("{ " ++ s_body ++ " }")
+  end.
+
+Definition pp_insn i := pp_insn_aux i ++ ";".
+
+Eval compute in pp_insn (While (0 <= "x") Do ("x" :== "x" - 1) Done).
