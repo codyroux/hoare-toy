@@ -27,9 +27,12 @@ Definition fib_imp : insn :=
 
 Search (nat -> Z).
 
+(* Idea: automatically prove a correspondance between tail-recursive
+   function and while loops. *)
 Theorem fib_imp_correct : forall n : nat,
     hoare (fun f => f "input" = Z.of_nat n)
           fib_imp
           (fun g => g "output" = Z.of_nat (fib n)).
 Proof.
+  intros.
 Abort.

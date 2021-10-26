@@ -151,3 +151,83 @@ Proof.
     + eapply while_SP_2; now eauto.
     + eapply while_SP_1; now eauto.
 Qed.
+
+
+(* Inductive is_fix : forall (F : (env -> env) -> env -> env) (f : env -> env), Prop := *)
+(*   | is_fix_unfold : forall F f, is_fix F f -> is_fix F (F f). *)
+
+Definition is_fix (F : (env -> env) -> env -> env) (f : env -> env) :=
+  forall ctx, f ctx = F f ctx.
+
+Definition fix_of_while (e : expr) (body : env -> env)
+           (F : env -> env) :=
+  fun ctx =>
+    if eval_expr ctx e =? 0
+    then ctx
+    else
+      let ctx' := body ctx in
+      F ctx'.
+
+Check fix_of_while.
+
+Definition evals_to body body_sem :=
+  forall f, big_step f body (body_sem f).
+
+Check evals_to.
+Print pred.
+
+Print env.
+
+Check hoare_complete.
+
+Lemma ext_eval : forall f g e, f ≃ g -> eval_expr f e = eval_expr g e.
+Proof.
+  intros until e; induction e; simpl; intros; auto.
+  rewrite IHe1; auto; rewrite IHe2; auto.
+Qed.
+
+(* this should really be in the logic area. *)
+Lemma simeq_sym : forall f g, f ≃ g -> g ≃ f.
+Proof. intros; intro; auto. Qed.
+
+Hint Resolve simeq_sym.
+
+Lemma fix_to_while_big : forall body e body_sem f ctx,
+    evals_to body body_sem ->
+    let specF := fix_of_while e body_sem in
+    is_fix specF f ->
+    big_step ctx (While e Do body Done) (f ctx).
+Proof.
+  intros body e body_sem f ctx h_body_sem specF h_is_fix.
+  Search ({ _ = _} + {_ <> _}).
+  case (Z.eq_dec (eval_expr ctx e) 0); intro eq_e.
+  - subst specF.
+    unfold fix_of_while, is_fix in *.
+    assert (eval_zero : eval_expr ctx e =? 0 = true) by (apply Z.eqb_eq; auto).
+    assert (h_is_fix' := h_is_fix ctx).
+    rewrite eval_zero in *.
+    rewrite h_is_fix'.
+    apply BS_While_halt; now auto.
+  - subst specF.
+    unfold fix_of_while, is_fix in *.
+    assert (eval_nz : eval_expr ctx e =? 0 = false) by (apply Z.eqb_neq; auto).
+    eapply BS_While_continue; eauto.
+    assert (h_is_fix' := h_is_fix ctx).
+    rewrite eval_nz in *; rewrite h_is_fix'.
+    (* Uh oh *)
+Admitted.
+
+
+Theorem fix_to_while : forall body e body_sem f,
+    evals_to body body_sem ->
+    let specF := fix_of_while e body_sem in
+    is_fix specF f ->
+    forall ctx,
+      hoare (fun k => k ≃ ctx) (While e Do body Done) (fun k => k ≃ (f ctx)).
+Proof.
+  intros.
+  eapply hoare_complete; intros.
+  eapply big_step_ext; [eauto | | apply H1 | reflexivity].
+  eapply fix_to_while_big; now eauto.
+Qed.
+
