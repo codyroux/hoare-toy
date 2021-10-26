@@ -134,3 +134,27 @@ Fixpoint pp_insn_aux (i : insn) : string :=
 Definition pp_insn i := pp_insn_aux i ++ ";".
 
 Eval compute in pp_insn (While (0 <= "x") Do ("x" :== "x" - 1) Done).
+
+Fixpoint pp_init_aux (vars : list string) :=
+  match vars with
+  | [] => ""
+  | [x] => x ++ " = 0"
+  | x::xs => x ++ " = 0," ++ pp_init_aux xs
+  end.
+
+
+Eval compute in (let input := ("x" :: "y" :: "z"::nil) in pp_init_aux input).
+
+Definition pp_init vars :=
+  pp_newline ("int " ++ pp_init_aux vars ++ ";").
+  
+
+Definition pp i :=
+  let vars := get_vars i in
+  pp_init vars ++ pp_insn i.
+
+
+Eval compute in 
+    pp ("x" :== 42; While (0 <= "x") Do ("x" :== "x" - 1) Done).
+
+(* TODO: should we have a return here? Maybe always "return res;" or something? *)
